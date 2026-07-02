@@ -2,7 +2,7 @@
 title: PaperPal
 emoji: 📚
 colorFrom: blue
-colorTo: amber
+colorTo: yellow
 sdk: gradio
 sdk_version: 4.36.1
 app_file: app.py
