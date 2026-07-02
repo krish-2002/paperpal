@@ -1,9 +1,9 @@
 # 📚 PaperPal
 
-> **Your AI-powered research companion** — Search ArXiv, ingest academic papers, and get answers grounded in real research with citations.
+> **Your AI-powered enterprise research companion** — Search universally via Semantic Scholar, ingest academic papers (bypassing paywalls), and get answers grounded in real research with hybrid search and hallucination guardrails.
 
 [![Python](https://img.shields.io/badge/Python-3.10+-blue?logo=python&logoColor=white)](https://python.org)
-[![MCP](https://img.shields.io/badge/MCP-Compatible-green?logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiLz4=)](https://modelcontextprotocol.io)
+[![Gradio](https://img.shields.io/badge/Gradio-UI-orange)](https://gradio.app/)
 [![ChromaDB](https://img.shields.io/badge/ChromaDB-Vector_Store-orange)](https://www.trychroma.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -11,17 +11,18 @@
 
 ## 🔥 What is PaperPal?
 
-PaperPal is a **research assistant** that combines semantic search, PDF ingestion, and RAG (Retrieval-Augmented Generation) to help you explore academic literature. It works as both a **standalone web dashboard** and an **MCP server** for Claude Desktop.
+PaperPal is an **enterprise-grade RAG (Retrieval-Augmented Generation) assistant** designed specifically for academic literature. It handles the complete pipeline from searching for papers (across 200M+ publications) to parsing complex PDFs, indexing them, and answering questions with inline citations.
 
 ### ✨ Key Features
 
 | Feature | Description |
 |---------|-------------|
-| 🔍 **Semantic Search** | Search ArXiv with AI-powered re-ranking — not just keywords |
-| 📄 **Paper Ingestion** | Download PDFs, extract text, chunk, embed & store automatically |
-| 🧠 **RAG Q&A** | Ask questions, get answers grounded in your papers with citations |
-| 🤖 **MCP Server** | Plug directly into Claude Desktop as a tool server |
-| 🎨 **Web Dashboard** | Beautiful dark-themed UI with Search, KB & Ask tabs |
+| 🔍 **Universal Search & Re-ranking** | Searches Semantic Scholar and uses OpenAI embeddings to compute cosine-similarity, ranking papers by *actual relevance* instead of citation count. |
+| 📄 **Robust PDF Ingestion** | Uses `pymupdf4llm` to extract clean Markdown (preserving tables/math). Automatically routes downloads through ArXiv when possible to bypass publisher firewalls. |
+| 🧠 **Hybrid Search + RRF** | Combines Vector Search (meaning) and BM25 (exact keywords) using Reciprocal Rank Fusion for high-precision document retrieval. |
+| 🛡️ **Anti-Hallucination Guardrails** | Computes a **Confidence Score** for every retrieval. If context is too weak, an **Abstention Threshold** prevents the LLM from hallucinating an answer. |
+| 📊 **Observability Dashboard** | Built-in analytics tab tracks end-to-end latency, token usage, and API costs per session. |
+| 📤 **Local PDF Upload** | Seamless fallback workflow for paywalled papers (IEEE, Elsevier, Springer). |
 
 ---
 
@@ -31,15 +32,15 @@ PaperPal is a **research assistant** that combines semantic search, PDF ingestio
         User Question
              |
   +----------v-----------+
-  |   🔍 search_papers   |----> ArXiv API ----> Semantic Re-ranking
+  |   🔍 Search Papers   |----> Semantic Scholar API ----> OpenAI Semantic Re-ranking
   +----------+-----------+
              |
   +----------v-----------+
-  |   📄 ingest_papers   |----> PDF Download -> Parse -> Chunk -> Embed -> ChromaDB
+  |   📄 Ingest Papers   |----> ArXiv Fallback / Local PDF Upload -> Parse -> Chunk -> Embed -> ChromaDB
   +----------+-----------+
              |
   +----------v-----------+
-  |   🧠 ask             |----> Retrieve Chunks -> OpenAI LLM -> Answer + Citations
+  |   🧠 Ask Question    |----> Hybrid Search (Vector+BM25) -> RRF Fusion -> Confidence Check -> LLM -> Answer
   +----------------------+
 ```
 
@@ -67,33 +68,18 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 2️⃣ Add Your API Key
+### 2️⃣ Add Your API Keys
 Create a `.env` file in the project root:
 ```env
 OPENAI_API_KEY=sk-your-key-here
+SEMANTIC_SCHOLAR_API_KEY=your-api-key-here  # Optional but recommended
 ```
 
 ### 3️⃣ Launch the Dashboard
 ```bash
-python app.py
+python hf_app.py
 ```
-Open 👉 **http://localhost:5000** in your browser.
-
-### 4️⃣ Or Connect to Claude Desktop
-Add to your `claude_desktop_config.json`:
-```json
-{
-  "mcpServers": {
-    "paperpal": {
-      "command": "python",
-      "args": ["/path/to/paperpal/server.py"],
-      "env": {
-        "OPENAI_API_KEY": "sk-your-key-here"
-      }
-    }
-  }
-}
-```
+Open 👉 **http://localhost:7860** in your browser to access the Gradio UI.
 
 ---
 
@@ -101,72 +87,38 @@ Add to your `claude_desktop_config.json`:
 
 ```
 paperpal/
-├── 🌐 app.py              # Flask web dashboard
-├── 🔌 server.py            # MCP server for Claude Desktop
-├── 🧪 eval.py              # Evaluation test suite (5/5 passing)
+├── 🌐 hf_app.py            # Gradio Web Dashboard (Main Entrypoint)
+├── 🔌 app.py               # Legacy Flask Entrypoint / API
+├── 🧪 eval.py              # Automated Evaluation Harness
 ├── 📋 requirements.txt     # Pinned dependencies
 ├── 🔒 .env                 # API keys (not committed)
 │
 ├── 🛠️ tools/
-│   ├── search.py           # ArXiv search + semantic re-ranking
+│   ├── search.py           # Semantic Scholar search + semantic re-ranking
 │   ├── ingest.py           # PDF -> parse -> chunk -> embed -> store
-│   ├── rag.py              # Retrieve -> LLM -> answer with citations
-│   └── kb.py               # ChromaDB knowledge base operations
+│   ├── rag.py              # Retrieve -> Confidence Check -> LLM -> answer with citations
+│   └── kb.py               # ChromaDB operations + Hybrid Search (BM25 + Vector)
 │
 ├── ⚙️ utils/
-│   ├── embedder.py         # sentence-transformers wrapper
-│   └── chunker.py          # Sliding-window word chunker
-│
-├── 🎨 static/
-│   ├── index.html          # Dashboard HTML
-│   ├── style.css           # Dark navy + amber academic theme
-│   └── script.js           # Frontend logic
+│   ├── embedder.py         # OpenAI Embeddings wrapper (`text-embedding-3-small`)
+│   └── chunker.py          # Sliding-window word chunker (400 words, 100 overlap)
 │
 └── 💾 chroma_db/           # Persistent vector store (auto-created)
 ```
 
 ---
 
-## 🛠️ MCP Tools
-
-| Tool | Description | Input |
-|------|-------------|-------|
-| 🔍 `search_papers` | Search ArXiv, return papers ranked by semantic relevance | `query`, `top_k` |
-| 📄 `ingest_papers` | Download + parse + chunk + embed + store in ChromaDB | `papers[]` |
-| 🧠 `ask` | Answer a research question using RAG with citations | `question` |
-
----
-
 ## 🧬 Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| 🧠 **Embeddings** | sentence-transformers (`all-MiniLM-L6-v2`) |
-| 💾 **Vector DB** | ChromaDB (persistent, local) |
-| 📄 **PDF Parsing** | PyMuPDF |
-| 🤖 **LLM** | OpenAI (`gpt-4o-mini`) |
-| 🔌 **Protocol** | MCP (Model Context Protocol) |
-| 🌐 **Web** | Flask + vanilla HTML/CSS/JS |
-| 🔍 **Search** | ArXiv API + cosine similarity re-ranking |
-
----
-
-## 🧪 Evaluation Results
-
-All **5/5** test suites passing:
-
-| Test | Status | Details |
-|------|--------|---------|
-| Embedder | ✅ Pass | 384-dim vectors, semantic sanity check passed |
-| Chunker | ✅ Pass | Correct chunking with 50-word overlap |
-| ArXiv Search | ✅ Pass | Sorted by semantic score, all fields present |
-| Ingest + Retrieve | ✅ Pass | PDF ingested, correct chunks retrieved (distance: 0.24) |
-| RAG End-to-End | ✅ Pass | Grounded answer with citations in 7.5s |
-
-Run the evaluation yourself:
-```bash
-python eval.py
-```
+| Layer | Technology | Why we use it |
+|-------|-----------|---------------|
+| 🧠 **Embeddings** | OpenAI (`text-embedding-3-small`) | Fast, cost-effective, high-dimensional semantic capture |
+| 💾 **Vector DB** | ChromaDB (local SQLite) | Lightweight, purely Python, uses HNSW for fast ANN search |
+| 🔍 **Keyword Search** | Rank_BM25 | Handles exact acronyms and part numbers that vectors miss |
+| 📄 **PDF Parsing** | PyMuPDF4LLM | Preserves academic formatting, tables, and math equations |
+| 🤖 **LLM** | OpenAI (`gpt-4o-mini`) | Excellent reasoning speed and cost ratio for summarization |
+| 🌐 **Web UI** | Gradio | Rapid UI prototyping with built-in state management |
+| 📚 **Data Source** | Semantic Scholar | Indexes 200M+ papers across all disciplines (unlike ArXiv) |
 
 ---
 
@@ -174,30 +126,22 @@ python eval.py
 
 | Parameter | Location | Default | Effect |
 |-----------|----------|---------|--------|
-| `chunk_size` | `chunker.py` | 500 words | Larger = more context per chunk |
-| `overlap` | `chunker.py` | 50 words | Larger = less boundary context loss |
-| `n_results` | `kb.py` | 5 chunks | More chunks = richer context for LLM |
-| `max_results` | `search.py` | 10 | More candidates = better re-ranking |
-| `model` | `rag.py` | `gpt-4o-mini` | Swap for `gpt-4o` for higher quality |
-| Distance metric | `kb.py` | `cosine` | Can switch to `l2` for comparison |
+| `chunk_size` | `chunker.py` | 400 words | Larger = more context, weaker vectors. Smaller = tighter vectors, lost context. |
+| `overlap` | `chunker.py` | 100 words | Prevents cutting critical sentences in half across boundaries. |
+| `n_results` | `rag.py` | 8 chunks | Determines how much total context is fed to the LLM (8 * 400 = 3,200 words). |
+| `temperature` | `rag.py` | 0.2 | Sweet spot for factual extraction without being overly rigid or hallucinating. |
+| `_ABSTENTION_THRESHOLD` | `rag.py` | 0.015 | Hard floor for retrieval quality. If best chunk is below this, LLM refuses to answer. |
 
 ---
 
-## 📝 Notes
+## 📝 Notes & Limitations
 
-- 📊 **Tables & images** in PDFs are not extracted — text content only
-- 🔒 **No data leaves locally** except the OpenAI API call in `rag.py`
-- 💾 ChromaDB persists to `chroma_db/` — delete the folder to reset
-- 🔄 Re-ingesting the same paper is safe (upsert, no duplicates)
+- **Image Extraction:** Embedded images and figures in PDFs are ignored; only layout-preserved text, math, and tables are extracted.
+- **BM25 Persistence:** Currently, BM25 indexing is done in-memory. If the server restarts, keyword search indices rebuild automatically on next query.
+- **Publisher Firewalls:** IEEE, Elsevier, and Springer often block automated PDF downloads (403 Forbidden). The app provides a "Open in Browser" link so users can download via university login and use the **Upload Local PDF** tab.
 
 ---
 
 ## 📜 License
 
 MIT
-
----
-
-<p align="center">
-  Built with ❤️ using MCP + ChromaDB + sentence-transformers
-</p>
