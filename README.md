@@ -1,3 +1,13 @@
+---
+title: PaperPal
+emoji: 📚
+colorFrom: blue
+colorTo: amber
+sdk: gradio
+sdk_version: 4.36.1
+app_file: app.py
+pinned: false
+---
 # 📚 PaperPal
 
 > **Your AI-powered enterprise research companion** — Search universally via Semantic Scholar, ingest academic papers (bypassing paywalls), and get answers grounded in real research with hybrid search and hallucination guardrails.
