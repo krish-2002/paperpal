@@ -185,17 +185,19 @@ def handle_ask(user_message, chat_history, session_id):
 
     _load_tools()
 
-    # Create API-ready history from Gradio's [[user, bot], [user, bot]] format
+    # Build API-ready history from Gradio's messages format
     api_history = []
     if chat_history:
-        for turn in chat_history:
-            api_history.append({"role": "user", "content": turn[0]})
-            api_history.append({"role": "assistant", "content": turn[1]})
+        for msg in chat_history:
+            api_history.append({"role": msg["role"], "content": msg["content"]})
+
+    # Append the user message to chat display
+    chat_history.append({"role": "user", "content": user_message})
 
     try:
         count = _collection.count()
         if count == 0:
-            chat_history.append([user_message, "No papers in knowledge base. Please upload or search for papers first."])
+            chat_history.append({"role": "assistant", "content": "No papers in knowledge base. Please upload or search for papers first."})
             return chat_history, ""
     except:
         pass
@@ -252,12 +254,12 @@ def handle_ask(user_message, chat_history, session_id):
                     md += f" -- *{authors}*"
                 md += "\n"
 
-        # Update Gradio chat history
-        chat_history.append([user_message, md])
+        # Append assistant response
+        chat_history.append({"role": "assistant", "content": md})
         return chat_history, ""
 
     except Exception as e:
-        chat_history.append([user_message, f"**Error:** {str(e)}"])
+        chat_history.append({"role": "assistant", "content": f"**Error:** {str(e)}"})
         return chat_history, ""
 
 
