@@ -56,12 +56,13 @@ def _parse_pdf(pdf_bytes: bytes) -> str:
     return md_text
 
 
-def ingest_paper(paper: dict, chunk_size: int = 400, overlap: int = 100) -> dict:
+def ingest_paper(session_id: str, paper: dict, chunk_size: int = 400, overlap: int = 100) -> dict:
     """
     Full ingestion pipeline for a single paper:
         download PDF → parse text → chunk → embed → store in ChromaDB
 
     Args:
+        session_id: Unique ID for the user's session.
         paper:      A dict produced by search.search_arxiv(), containing at
                     minimum: paper_id, title, authors, abstract, url.
         chunk_size: Words per chunk (passed to chunker).
@@ -97,7 +98,7 @@ def ingest_paper(paper: dict, chunk_size: int = 400, overlap: int = 100) -> dict
     }
 
     print(f"[ingest] Embedding and storing chunks ...")
-    save_chunks(paper_id=paper_id, chunks=chunks, metadata=metadata)
+    save_chunks(session_id=session_id, paper_id=paper_id, chunks=chunks, metadata=metadata)
 
     print(f"[ingest] Done -- {paper_id}")
     return {
@@ -107,14 +108,14 @@ def ingest_paper(paper: dict, chunk_size: int = 400, overlap: int = 100) -> dict
     }
 
 
-def ingest_papers(papers: list[dict], **kwargs) -> list[dict]:
+def ingest_papers(session_id: str, papers: list[dict], **kwargs) -> list[dict]:
     """
     Convenience wrapper to ingest a list of papers (e.g. from search_arxiv).
     Returns a list of summary dicts, one per paper.
     """
-    return [ingest_paper(p, **kwargs) for p in papers]
+    return [ingest_paper(session_id, p, **kwargs) for p in papers]
 
-def ingest_local_pdf(file_path: str, chunk_size: int = 400, overlap: int = 100) -> dict:
+def ingest_local_pdf(session_id: str, file_path: str, chunk_size: int = 400, overlap: int = 100) -> dict:
     """
     Ingest a local PDF file, completely bypassing ArXiv or internet downloads.
     """
@@ -143,7 +144,7 @@ def ingest_local_pdf(file_path: str, chunk_size: int = 400, overlap: int = 100) 
     }
     
     print(f"[ingest] Embedding and storing chunks ...")
-    save_chunks(paper_id=paper_id, chunks=chunks, metadata=metadata)
+    save_chunks(session_id=session_id, paper_id=paper_id, chunks=chunks, metadata=metadata)
     
     print(f"[ingest] Done -- {paper_id}")
     return {

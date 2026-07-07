@@ -58,7 +58,7 @@ def test_embedder():
     
     assert isinstance(result, list), f"Expected list, got {type(result)}"
     assert isinstance(result[0], list), f"Expected nested list, got {type(result[0])}"
-    assert len(result[0]) == 384, f"Expected 384 dims, got {len(result[0])}"
+    assert len(result[0]) == 1536, f"Expected 1536 dims, got {len(result[0])}"
     print(f"  [PASS] Output shape: 1 x {len(result[0])} dims")
 
     # Test batch embedding
@@ -169,7 +169,7 @@ def test_ingest_and_retrieve(papers: list[dict]):
     print(f"  Ingesting: {paper['title'][:60]}...")
 
     with timed("Full ingest pipeline (download -> parse -> chunk -> embed -> store)"):
-        result = ingest_paper(paper)
+        result = ingest_paper("eval_session", paper)
     
     assert result["chunks_stored"] > 0, "Expected chunks to be stored"
     print(f"  [PASS] Stored {result['chunks_stored']} chunks for {result['paper_id']}")
@@ -178,7 +178,7 @@ def test_ingest_and_retrieve(papers: list[dict]):
     test_query = paper["title"]  # Use the paper's own title as query
     
     with timed("Retrieval query"):
-        retrieved = retrieve_chunks(test_query, n_results=3)
+        retrieved = retrieve_chunks("eval_session", test_query, n_results=3)
     
     assert len(retrieved) > 0, "Expected chunks to be retrieved"
     print(f"  [PASS] Retrieved {len(retrieved)} chunks")
@@ -213,7 +213,7 @@ def test_rag():
     question = "What is the attention mechanism in transformers?"
     
     with timed("Full RAG pipeline (retrieve -> LLM -> answer)"):
-        result = answer_question(question, n_chunks=3)
+        result = answer_question("eval_session", question, n_chunks=3)
     
     assert "answer" in result, "Missing 'answer' key"
     assert "citations" in result, "Missing 'citations' key"
